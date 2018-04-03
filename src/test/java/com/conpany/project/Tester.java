@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @Rollback
 public abstract class Tester {
-	
+
 }
 
 

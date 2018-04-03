@@ -16,10 +16,10 @@ import static com.company.project.core.ProjectConstant.*;
  */
 public class CodeGenerator {
     //JDBC配置，请修改为你项目的实际配置
-    private static final String JDBC_URL = "jdbc:mysql://localhost:3306/test";
-    private static final String JDBC_USERNAME = "root";
-    private static final String JDBC_PASSWORD = "123456";
-    private static final String JDBC_DIVER_CLASS_NAME = "com.mysql.jdbc.Driver";
+    private static final String JDBC_URL = "jdbc:sqlserver://192.168.3.222:1433";
+    private static final String JDBC_USERNAME = "testERP";
+    private static final String JDBC_PASSWORD = "testERP";
+    private static final String JDBC_DIVER_CLASS_NAME = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
     private static final String PROJECT_PATH = System.getProperty("user.dir");//项目在硬盘上的基础路径
     private static final String TEMPLATE_FILE_PATH = PROJECT_PATH + "/src/test/resources/generator/template";//模板位置
@@ -35,10 +35,10 @@ public class CodeGenerator {
     private static final String DATE = new SimpleDateFormat("yyyy/MM/dd").format(new Date());//@date
 
     public static void main(String[] args) {
-        genCode("输入表名");
+        genCode("MK_PRODUCT");
     }
 
-    public static void genCode(String... tableNames) {
+    private static void genCode(String... tableNames) {
         for (String tableName : tableNames) {
             //根据需求生成，不需要的注掉，模板有问题的话可以自己修改。
             genModelAndMapper(tableName);
@@ -47,7 +47,7 @@ public class CodeGenerator {
         }
     }
 
-    public static void genModelAndMapper(String tableName) {
+    private static void genModelAndMapper(String tableName) {
         Context context = new Context(ModelType.FLAT);
         context.setId("Potato");
         context.setTargetRuntime("MyBatis3Simple");
@@ -84,7 +84,7 @@ public class CodeGenerator {
 
         TableConfiguration tableConfiguration = new TableConfiguration(context);
         tableConfiguration.setTableName(tableName);
-        tableConfiguration.setGeneratedKey(new GeneratedKey("id", "Mysql", true, null));
+        tableConfiguration.setGeneratedKey(new GeneratedKey("id", "SqlServer", true, null));
         context.addTableConfiguration(tableConfiguration);
 
         List<String> warnings;
@@ -94,9 +94,8 @@ public class CodeGenerator {
             config.addContext(context);
             config.validate();
 
-            boolean overwrite = true;
-            DefaultShellCallback callback = new DefaultShellCallback(overwrite);
-            warnings = new ArrayList<String>();
+            DefaultShellCallback callback = new DefaultShellCallback(true);
+            warnings = new ArrayList<>();
             generator = new MyBatisGenerator(config, callback, warnings);
             generator.generate(null);
         } catch (Exception e) {
@@ -113,7 +112,7 @@ public class CodeGenerator {
         System.out.println(modelName + "Mapper.xml 生成成功");
     }
 
-    public static void genService(String tableName) {
+    private static void genService(String tableName) {
         try {
             freemarker.template.Configuration cfg = getConfiguration();
 
@@ -125,27 +124,32 @@ public class CodeGenerator {
             data.put("modelNameLowerCamel", tableNameConvertLowerCamel(tableName));
             data.put("basePackage", BASE_PACKAGE);
 
+            Boolean flag;
             File file = new File(PROJECT_PATH + JAVA_PATH + PACKAGE_PATH_SERVICE + modelNameUpperCamel + "Service.java");
             if (!file.getParentFile().exists()) {
-                file.getParentFile().mkdirs();
+                flag = file.getParentFile().mkdirs();
+                if (flag) {
+                    cfg.getTemplate("service.ftl").process(data,
+                            new FileWriter(file));
+                    System.out.println(modelNameUpperCamel + "Service.java 生成成功");
+                }
             }
-            cfg.getTemplate("service.ftl").process(data,
-                    new FileWriter(file));
-            System.out.println(modelNameUpperCamel + "Service.java 生成成功");
 
             File file1 = new File(PROJECT_PATH + JAVA_PATH + PACKAGE_PATH_SERVICE_IMPL + modelNameUpperCamel + "ServiceImpl.java");
             if (!file1.getParentFile().exists()) {
-                file1.getParentFile().mkdirs();
+                flag = file1.getParentFile().mkdirs();
+                if (flag) {
+                    cfg.getTemplate("service-impl.ftl").process(data,
+                            new FileWriter(file1));
+                    System.out.println(modelNameUpperCamel + "ServiceImpl.java 生成成功");
+                }
             }
-            cfg.getTemplate("service-impl.ftl").process(data,
-                    new FileWriter(file1));
-            System.out.println(modelNameUpperCamel + "ServiceImpl.java 生成成功");
         } catch (Exception e) {
             throw new RuntimeException("生成Service失败", e);
         }
     }
 
-    public static void genController(String tableName) {
+    private static void genController(String tableName) {
         try {
             freemarker.template.Configuration cfg = getConfiguration();
 
@@ -158,14 +162,16 @@ public class CodeGenerator {
             data.put("modelNameLowerCamel", tableNameConvertLowerCamel(tableName));
             data.put("basePackage", BASE_PACKAGE);
 
+            Boolean flag;
             File file = new File(PROJECT_PATH + JAVA_PATH + PACKAGE_PATH_CONTROLLER + modelNameUpperCamel + "Controller.java");
             if (!file.getParentFile().exists()) {
-                file.getParentFile().mkdirs();
+                flag = file.getParentFile().mkdirs();
+                if (flag) {
+                    //cfg.getTemplate("controller-restful.ftl").process(data, new FileWriter(file));
+                    cfg.getTemplate("controller.ftl").process(data, new FileWriter(file));
+                    System.out.println(modelNameUpperCamel + "Controller.java 生成成功");
+                }
             }
-            //cfg.getTemplate("controller-restful.ftl").process(data, new FileWriter(file));
-            cfg.getTemplate("controller.ftl").process(data, new FileWriter(file));
-
-            System.out.println(modelNameUpperCamel + "Controller.java 生成成功");
         } catch (Exception e) {
             throw new RuntimeException("生成Controller失败", e);
         }
